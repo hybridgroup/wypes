@@ -10,7 +10,7 @@ import (
 // Bool wraps [bool].
 type Bool bool
 
-const BoolSize = 1
+const BoolSize = 4
 
 // Unwrap returns the wrapped value.
 func (v Bool) Unwrap() bool {
@@ -44,16 +44,22 @@ func (Bool) MemoryLift(s *Store, offset uint32) (Bool, uint32) {
 		return Bool(false), 0
 	}
 
-	return Bool(raw[0] == 1), BoolSize
+	val := binary.LittleEndian.Uint32(raw[0:])
+
+	return Bool(val > 0), BoolSize
 }
 
 // MemoryLower implements [MemoryLower] interface.
 func (v Bool) MemoryLower(s *Store, offset uint32) (length uint32) {
-	res := 0
+	res := uint32(0)
 	if v {
 		res = 1
 	}
-	ok := s.Memory.Write(offset, []byte{byte(res)})
+
+	ptrdata := make([]byte, 4)
+	binary.LittleEndian.PutUint32(ptrdata[0:], res)
+
+	ok := s.Memory.Write(offset, ptrdata)
 	if !ok {
 		s.Error = ErrMemRead
 		return 0
